@@ -154,7 +154,7 @@ export class Engine {
     }
 
     if (this.inputState.action1 && collisionResult.collectableSample) {
-      if (this.submarine.addSample(collisionResult.collectableSample.id)) {
+      if (this.submarine.addSample(collisionResult.collectableSample.sampleId)) {
         this.level.collectSample(collisionResult.collectableSample);
       }
     }
@@ -281,6 +281,26 @@ export class Engine {
     this.inputState = { ...this.inputState, ...input };
   }
 
+  repair(): boolean {
+    if (!this.submarine || this.gameState !== 'playing') return false;
+    return this.submarine.repair();
+  }
+
+  addMapMarker(marker: { x: number; y: number; type: string; label: string; color: string }): void {
+    if (!this.level) return;
+    this.level.addMapMarker(marker);
+  }
+
+  clearMapMarkers(): void {
+    if (!this.level) return;
+    this.level.clearMapMarkers();
+  }
+
+  getMapMarkers(): Array<{ id: string; x: number; y: number; type: string; label: string; color: string }> {
+    if (!this.level) return [];
+    return this.level.getMapMarkers();
+  }
+
   getInput(): InputState {
     return { ...this.inputState };
   }
@@ -343,6 +363,7 @@ export class Engine {
       objectivesCompleted,
       creditsEarned,
       newUnlocks,
+      collectedSampleIds: [...this.level.collectedSamples],
     };
   }
 

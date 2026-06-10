@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pause, Play, Home, LogOut, Gauge, Clock, Package, Lightbulb, Radio, Hand } from 'lucide-react';
+import { Pause, Play, Home, LogOut, Gauge, Clock, Package, Lightbulb, Radio, Hand, Wrench, MapPin, Flag } from 'lucide-react';
 import { Engine } from '@/game/Engine';
 import { Renderer } from '@/game/renderer/Renderer';
 import { useSaveStore } from '@/store/useSaveStore';
@@ -43,6 +43,9 @@ export default function GameLevel() {
     samples: [] as string[],
     maxSamples: 5,
     objectives: [] as Array<{ id: string; name: string; description: string; currentCount: number; target: number; completed: boolean }>,
+    mapMarkers: [] as Array<{ id: string; x: number; y: number; type: string; label: string; color: string }>,
+    sonarResults: [] as Array<{ type: string; x: number; y: number; distance: number; size: number }>,
+    repairAvailable: false,
   });
 
   const level = LEVELS.find(l => l.id === id);
@@ -131,6 +134,23 @@ export default function GameLevel() {
         
         const state = engine.getState();
         if (state) {
+          const markers = engine.getMapMarkers();
+          const sonarResults = state.sonarResults;
+
+          if (sonarResults.length > 0 && engine.submarine?.sonarActive) {
+            for (const result of sonarResults) {
+              const typeLabels: Record<string, string> = { sample: '样本', creature: '生物', hazard: '危险', beacon: '信标', exit: '出口' };
+              const typeColors: Record<string, string> = { sample: '#00ffcc', creature: '#a855f7', hazard: '#ff4444', beacon: '#f97316', exit: '#fbbf24' };
+              engine.addMapMarker({
+                x: result.x,
+                y: result.y,
+                type: result.type,
+                label: typeLabels[result.type] || result.type,
+                color: typeColors[result.type] || '#ffffff',
+              });
+            }
+          }
+
           setHudData({
             oxygen: state.submarine.oxygen,
             maxOxygen: state.submarine.maxOxygen,
@@ -145,6 +165,9 @@ export default function GameLevel() {
             samples: state.submarine.samples,
             maxSamples: state.submarine.maxSamples,
             objectives: state.level.objectives,
+            mapMarkers: engine.getMapMarkers(),
+            sonarResults: state.sonarResults,
+            repairAvailable: state.submarine.battery >= 10 && state.submarine.hull < state.submarine.maxHull,
           });
 
           updateSubmarineState(state.submarine);
@@ -228,6 +251,25 @@ export default function GameLevel() {
           break;
         case 'f':
           engineRef.current.setInput({ action4: true });
+          break;
+        case 'r':
+          if (engineRef.current) {
+            engineRef.current.repair();
+          }
+          break;
+        case 'm':
+          if (engineRef.current) {
+            const subState = engineRef.current.getState()?.submarine;
+            if (subState) {
+              engineRef.current.addMapMarker({
+                x: subState.x,
+                y: subState.y,
+                type: 'interest',
+                label: `标记点 ${Math.floor(subState.depth)}m`,
+                color: '#00ffcc',
+              });
+            }
+          }
           break;
         case 'escape':
           e.preventDefault();
@@ -404,7 +446,7 @@ export default function GameLevel() {
         </button>
       </div>
 
-      <div className="absolute top-4 right-4 mt-20 w-72 pointer-events-none z-10">
+      <div className="absolute top-4 right-4 mt-20 w-72 pointer-events-none z-10 flex flex-col gap-3">
         <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-4 border border-cyan-500/30 pointer-events-auto">
           <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
             <Package size={16} />
@@ -432,9 +474,31 @@ export default function GameLevel() {
             ))}
           </div>
         </div>
+
+        {hudData.mapMarkers.length > 0 && (
+          <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-4 border border-cyan-500/30 pointer-events-auto max-h-48 overflow-y-auto">
+            <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2 text-sm">
+              <MapPin size={14} />
+              地图标记 ({hudData.mapMarkers.length})
+            </h3>
+            <div className="space-y-1">
+              {hudData.mapMarkers.slice(-8).map((marker) => (
+                <div
+                  key={marker.id}
+                  className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800/50 text-xs"
+                  style={{ borderLeft: `3px solid ${marker.color}` }}
+                >
+                  <Flag size={10} style={{ color: marker.color }} />
+                  <span className="text-slate-300">{marker.label}</span>
+                  <span className="text-slate-600 ml-auto">{Math.floor(marker.y)}m</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="absolute left-4 top-40 w-48 pointer-events-none z-10">
+      <div className="absolute left-4 top-40 w-56 pointer-events-none z-10">
         <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-3 border border-cyan-500/30 pointer-events-auto">
           <h3 className="text-cyan-400 font-bold mb-2 text-sm flex items-center gap-2">
             <Package size={14} />
@@ -443,30 +507,37 @@ export default function GameLevel() {
           <div className="text-xs text-slate-400 mb-2">
             {hudData.samples.length}/{hudData.maxSamples}
           </div>
-          <div className="grid grid-cols-5 gap-1">
-            {Array.from({ length: hudData.maxSamples }).map((_, i) => {
-              const sampleId = hudData.samples[i];
-              const sample = sampleId ? getCollectedSampleInfo(sampleId) : null;
+          <div className="space-y-1 max-h-60 overflow-y-auto">
+            {hudData.samples.length === 0 && (
+              <div className="text-xs text-slate-600 text-center py-2">空</div>
+            )}
+            {hudData.samples.map((sampleId, i) => {
+              const sample = getCollectedSampleInfo(sampleId);
+              if (!sample) return null;
+              const rarityColors = ['#9CA3AF', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B'];
+              const typeLabels: Record<string, string> = { creature: '生物', mineral: '矿物', debris: '残骸', artifact: '制品' };
               return (
                 <div
-                  key={i}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    sample
-                      ? 'border-2'
-                      : 'bg-slate-700/50 border border-slate-600/30'
-                  }`}
-                  style={sample ? {
-                    backgroundColor: sample.glowColor + '30',
-                    borderColor: sample.glowColor,
-                  } : {}}
-                  title={sample?.name || '空'}
+                  key={`${sampleId}_${i}`}
+                  className="flex items-center gap-2 p-1.5 rounded-lg"
+                  style={{
+                    backgroundColor: sample.glowColor + '15',
+                    borderLeft: `3px solid ${sample.glowColor}`,
+                  }}
                 >
-                  {sample && (
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: sample.glowColor }}
-                    />
-                  )}
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: sample.glowColor }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-white font-medium truncate">{sample.name}</div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-slate-500">{typeLabels[sample.type] || sample.type}</span>
+                      <span className="text-[9px]" style={{ color: rarityColors[sample.rarity - 1] }}>
+                        {'★'.repeat(sample.rarity)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -523,6 +594,22 @@ export default function GameLevel() {
                 <Hand size={20} className="text-purple-400" />
               </div>
               <span className="text-xs text-slate-500">E 机械臂</span>
+            </div>
+
+            <div className="h-16 w-px bg-slate-700" />
+
+            <div className="text-center">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-1 border ${hudData.repairAvailable ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-slate-700/50 border-slate-600/50 opacity-50'}`}>
+                <Wrench size={20} className={hudData.repairAvailable ? 'text-emerald-400' : 'text-slate-500'} />
+              </div>
+              <span className="text-xs text-slate-500">R 维修</span>
+            </div>
+
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center mb-1 border border-cyan-500/50">
+                <MapPin size={20} className="text-cyan-400" />
+              </div>
+              <span className="text-xs text-slate-500">M 标记</span>
             </div>
 
             <div className="h-16 w-px bg-slate-700" />

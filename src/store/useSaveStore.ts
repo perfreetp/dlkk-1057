@@ -26,8 +26,8 @@ interface SaveStoreActions {
 
 const initialSave: GameSave = {
   playerName: '',
-  currentLevel: 'level-1',
-  unlockedLevels: ['level-1'],
+  currentLevel: 'level1',
+  unlockedLevels: ['level1'],
   upgrades: {},
   collectedSamples: [],
   collectedLogs: [],

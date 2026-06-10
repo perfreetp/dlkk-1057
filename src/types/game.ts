@@ -67,6 +67,7 @@ export interface SettlementResult {
   objectivesCompleted: number;
   creditsEarned: number;
   newUnlocks: string[];
+  collectedSampleIds: string[];
 }
 
 export type GameState = 'menu' | 'base' | 'playing' | 'paused' | 'settlement';

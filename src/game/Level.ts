@@ -38,6 +38,7 @@ export class Level {
   failed: boolean;
   score: number;
   collectedSamples: string[];
+  mapMarkers: Array<{ id: string; x: number; y: number; type: string; label: string; color: string }>;
 
   private levelConfig: LevelConfig;
   private worldBounds: { minX: number; maxX: number; minY: number; maxY: number };
@@ -92,6 +93,7 @@ export class Level {
     this.failed = false;
     this.score = 0;
     this.collectedSamples = [];
+    this.mapMarkers = [];
 
     this.spawnEntities();
   }
@@ -290,18 +292,25 @@ export class Level {
 
   collectSample(sample: SampleEntity): boolean {
     if (sample.collect()) {
-      this.collectedSamples.push(sample.id);
+      this.collectedSamples.push(sample.sampleId);
       this.score += sample.points;
 
       for (const obj of this.objectives) {
-        if (obj.type === 'collect' && obj.currentCount < obj.target) {
-          obj.currentCount++;
-        } else if (obj.type === 'collectType') {
-          const config = this.levelConfig.objectives.find(o => o.id === obj.id);
-          if (config && 'targetType' in config && config.targetType === sample.sampleType) {
-            if (obj.currentCount < obj.target) {
+        if (obj.currentCount >= obj.target) continue;
+
+        const config = this.levelConfig.objectives.find(o => o.id === obj.id);
+
+        if (obj.type === 'collect') {
+          if (config && config.targetId) {
+            if (sample.sampleId === config.targetId) {
               obj.currentCount++;
             }
+          } else {
+            obj.currentCount++;
+          }
+        } else if (obj.type === 'collectType') {
+          if (config && config.targetType && config.targetType === sample.sampleType) {
+            obj.currentCount++;
           }
         }
       }
@@ -437,6 +446,7 @@ export class Level {
     this.failed = false;
     this.score = 0;
     this.collectedSamples = [];
+    this.mapMarkers = [];
 
     for (const obj of this.objectives) {
       obj.currentCount = 0;
@@ -445,5 +455,25 @@ export class Level {
     for (const entity of this.entities) {
       entity.reset();
     }
+  }
+
+  addMapMarker(marker: { x: number; y: number; type: string; label: string; color: string }): void {
+    const existing = this.mapMarkers.find(m =>
+      m.type === marker.type && Math.abs(m.x - marker.x) < 30 && Math.abs(m.y - marker.y) < 30
+    );
+    if (existing) return;
+
+    this.mapMarkers.push({
+      id: `marker_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      ...marker,
+    });
+  }
+
+  clearMapMarkers(): void {
+    this.mapMarkers = [];
+  }
+
+  getMapMarkers(): Array<{ id: string; x: number; y: number; type: string; label: string; color: string }> {
+    return [...this.mapMarkers];
   }
 }

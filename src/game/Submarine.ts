@@ -182,14 +182,13 @@ export class Submarine implements SubmarineState {
   }
 
   repair(): boolean {
-    if (this.battery >= 10 && this.hull < this.maxHull) {
-      this.resources.repairHull(10);
-      this.resources.consumeBattery(10);
-      this.hull = this.resources.hull;
-      this.battery = this.resources.battery;
-      return true;
-    }
-    return false;
+    if (this.battery < 10 || this.hull >= this.maxHull) return false;
+    const repairAmount = Math.min(10, this.maxHull - this.hull);
+    this.resources.repairHull(repairAmount);
+    this.resources.consumeBattery(10);
+    this.hull = this.resources.hull;
+    this.battery = this.resources.battery;
+    return true;
   }
 
   takeDamage(amount: number): boolean {

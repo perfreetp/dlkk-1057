@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Home, RotateCcw, Coins, MapPin, Package, Clock, Award, ChevronRight, Unlock } from 'lucide-react';
+import { Star, Home, RotateCcw, Coins, MapPin, Package, Clock, Award, ChevronRight, Unlock, Wrench } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { useSaveStore } from '@/store/useSaveStore';
 import { SAMPLES } from '@/data/samples';
@@ -99,13 +99,15 @@ export default function Settlement() {
     return colors[rarity - 1] || colors[0];
   };
 
-  const newSamples = settlementResult.newUnlocks
-    .map(id => SAMPLES.find(s => s.id === id))
-    .filter(Boolean);
-
   const newLevels = settlementResult.newUnlocks
     .map(id => LEVELS.find(l => l.id === id))
     .filter(Boolean);
+
+  const collectedSampleDetails = (settlementResult.collectedSampleIds || [])
+    .map(id => SAMPLES.find(s => s.id === id))
+    .filter(Boolean);
+
+  const typeLabels: Record<string, string> = { creature: '生物', mineral: '矿物', debris: '残骸', artifact: '制品' };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-8">
@@ -247,6 +249,47 @@ export default function Settlement() {
               </div>
             </div>
 
+            {collectedSampleDetails.length > 0 && (
+              <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-2xl p-6 border border-purple-500/30">
+                <h3 className="text-purple-400 font-bold text-lg mb-4 flex items-center gap-2">
+                  <Package size={20} />
+                  本次采集样本
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {collectedSampleDetails.map((sample, i) => sample && (
+                    <div
+                      key={`${sample.id}_${i}`}
+                      className="flex items-center gap-3 p-2 bg-slate-700/30 rounded-xl"
+                      style={{ borderLeft: `3px solid ${sample.glowColor}` }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: sample.glowColor + '30',
+                          boxShadow: `0 0 10px ${sample.glowColor}40`,
+                        }}
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: sample.glowColor }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-medium text-sm truncate">{sample.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500">{typeLabels[sample.type] || sample.type}</span>
+                          <span className="text-[10px]" style={{ color: getRarityColor(sample.rarity) }}>
+                            {'★'.repeat(sample.rarity)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-yellow-400 text-xs font-bold">{sample.points}分</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {newLevels.length > 0 && (
               <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-2xl p-6 border border-emerald-500/30">
                 <h3 className="text-emerald-400 font-bold text-lg mb-4 flex items-center gap-2">
@@ -274,49 +317,6 @@ export default function Settlement() {
                 </div>
               </div>
             )}
-
-            {newSamples.length > 0 && (
-              <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 rounded-2xl p-6 border border-purple-500/30">
-                <h3 className="text-purple-400 font-bold text-lg mb-4 flex items-center gap-2">
-                  <Package size={20} />
-                  新收集的样本
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {newSamples.map((sample) => sample && (
-                    <div
-                      key={sample.id}
-                      className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-xl"
-                    >
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center"
-                        style={{
-                          backgroundColor: sample.glowColor + '30',
-                          boxShadow: `0 0 15px ${sample.glowColor}40`,
-                        }}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full"
-                          style={{ backgroundColor: sample.glowColor }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white font-medium truncate">{sample.name}</div>
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: sample.rarity }).map((_, i) => (
-                            <Star
-                              key={i}
-                              size={10}
-                              fill={getRarityColor(sample.rarity)}
-                              color={getRarityColor(sample.rarity)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -329,27 +329,18 @@ export default function Settlement() {
             返回基地
           </button>
 
-          {isVictory && (
-            <button
-              onClick={handleReplayLevel}
-              className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xl font-bold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300 transform hover:scale-105 active:scale-95"
-            >
-              <RotateCcw size={28} />
-              重玩本关
-            </button>
-          )}
+          <button
+            onClick={handleReplayLevel}
+            className="flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xl font-bold rounded-xl shadow-lg shadow-cyan-500/30 transition-all duration-300 transform hover:scale-105 active:scale-95"
+          >
+            <RotateCcw size={28} />
+            {isVictory ? '重玩本关' : '再试一次'}
+          </button>
         </div>
 
         {!isVictory && (
           <div className="mt-8 text-center">
             <p className="text-slate-500 mb-4">不要灰心！升级你的潜艇再来挑战吧。</p>
-            <button
-              onClick={handleReplayLevel}
-              className="flex items-center gap-3 px-10 py-4 mx-auto bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white text-xl font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all duration-300 transform hover:scale-105 active:scale-95"
-            >
-              <RotateCcw size={28} />
-              再试一次
-            </button>
           </div>
         )}
       </div>

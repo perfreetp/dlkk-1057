@@ -155,7 +155,12 @@ export default function Base() {
       navigate(`/level/${levelId}`);
     } else {
       const level = LEVELS.find(l => l.id === levelId);
-      if (level && save.totalCredits >= level.unlockScore) {
+      if (level && level.unlockScore === 0) {
+        unlockLevel(levelId);
+        setCurrentLevel(levelId);
+        setGameState('playing');
+        navigate(`/level/${levelId}`);
+      } else if (level && save.totalCredits >= level.unlockScore) {
         unlockLevel(levelId);
         showMessage(`已解锁关卡：${level.name}`, 'success');
       } else {

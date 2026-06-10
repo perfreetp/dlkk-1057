@@ -11,6 +11,7 @@ export class SampleEntity implements Sample {
   height: number;
   active: boolean;
 
+  sampleId: string;
   sampleType: 'creature' | 'mineral' | 'debris' | 'artifact';
   name: string;
   rarity: 1 | 2 | 3 | 4 | 5;
@@ -35,6 +36,7 @@ export class SampleEntity implements Sample {
     }
 
     this.id = id ?? `sample_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.sampleId = sampleId;
     this.type = 'sample';
     this.x = x;
     this.y = y;

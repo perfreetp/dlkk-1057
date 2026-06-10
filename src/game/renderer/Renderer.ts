@@ -98,6 +98,7 @@ export class Renderer {
     }
 
     this.renderArm(submarine);
+    this.renderMapMarkers(level);
 
     this.ctx.restore();
 
@@ -796,5 +797,34 @@ export class Renderer {
       x: (screenX - this.width / 2) / this.camera.zoom + this.camera.x,
       y: (screenY - this.height / 2) / this.camera.zoom + this.camera.y,
     };
+  }
+
+  private renderMapMarkers(level: Level): void {
+    const markers = level.getMapMarkers();
+    for (const marker of markers) {
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.7;
+
+      this.ctx.strokeStyle = marker.color;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(marker.x, marker.y - 12);
+      this.ctx.lineTo(marker.x - 6, marker.y);
+      this.ctx.lineTo(marker.x + 6, marker.y);
+      this.ctx.closePath();
+      this.ctx.stroke();
+
+      this.ctx.fillStyle = marker.color + '40';
+      this.ctx.beginPath();
+      this.ctx.arc(marker.x, marker.y - 6, 8, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      this.ctx.fillStyle = marker.color;
+      this.ctx.font = '9px monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(marker.label, marker.x, marker.y - 18);
+
+      this.ctx.restore();
+    }
   }
 }

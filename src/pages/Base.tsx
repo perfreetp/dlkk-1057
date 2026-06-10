@@ -451,7 +451,7 @@ export default function Base() {
                               </div>
                               <p className="text-slate-400 text-sm mb-2">{sample.description}</p>
                               <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500 capitalize">{sample.type}</span>
+                                <span className="text-slate-500">{sample.type === 'creature' ? '生物' : sample.type === 'mineral' ? '矿物' : sample.type === 'debris' ? '残骸' : sample.type === 'artifact' ? '制品' : sample.type}</span>
                                 <span className="text-yellow-400 font-medium">{sample.points} 点</span>
                               </div>
                             </div>

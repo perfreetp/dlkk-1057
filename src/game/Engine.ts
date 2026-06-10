@@ -187,6 +187,25 @@ export class Engine {
         this.submarine.x,
         this.submarine.y
       );
+
+      if (this.level.exitX !== undefined && this.level.exitY !== undefined) {
+        const exitDx = this.level.exitX - this.submarine.x;
+        const exitDy = this.level.exitY - this.submarine.y;
+        const exitDist = Math.sqrt(exitDx * exitDx + exitDy * exitDy);
+        if (exitDist <= this.submarine.sonar.range) {
+          const hasExitResult = pingResults.some(r => r.type === 'exit');
+          if (!hasExitResult) {
+            pingResults.push({
+              type: 'exit',
+              x: this.level.exitX,
+              y: this.level.exitY,
+              distance: exitDist,
+              size: 30,
+            });
+          }
+        }
+      }
+
       if (pingResults.length > 0) {
         this.sonarResults = pingResults;
       }

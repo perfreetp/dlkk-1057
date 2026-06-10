@@ -151,6 +151,15 @@ export default function GameLevel() {
             }
           }
 
+          const prevSampleCount = hudData.samples.length;
+          const currentSampleCount = state.submarine.samples.length;
+          if (currentSampleCount > prevSampleCount) {
+            const newSamples = state.submarine.samples.slice(prevSampleCount);
+            for (const sampleId of newSamples) {
+              addSampleToCollection(sampleId);
+            }
+          }
+
           setHudData({
             oxygen: state.submarine.oxygen,
             maxOxygen: state.submarine.maxOxygen,
@@ -599,16 +608,40 @@ export default function GameLevel() {
             <div className="h-16 w-px bg-slate-700" />
 
             <div className="text-center">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-1 border ${hudData.repairAvailable ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-slate-700/50 border-slate-600/50 opacity-50'}`}>
+              <button
+                onClick={() => engineRef.current?.repair()}
+                className={`w-12 h-12 rounded-lg flex items-center justify-center mb-1 border transition-all ${
+                  hudData.repairAvailable
+                    ? 'bg-emerald-500/20 border-emerald-500/50 hover:bg-emerald-500/30 active:scale-95 cursor-pointer'
+                    : 'bg-slate-700/50 border-slate-600/50 opacity-50 cursor-not-allowed'
+                }`}
+                disabled={!hudData.repairAvailable}
+              >
                 <Wrench size={20} className={hudData.repairAvailable ? 'text-emerald-400' : 'text-slate-500'} />
-              </div>
+              </button>
               <span className="text-xs text-slate-500">R 维修</span>
             </div>
 
             <div className="text-center">
-              <div className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center mb-1 border border-cyan-500/50">
+              <button
+                onClick={() => {
+                  if (engineRef.current) {
+                    const subState = engineRef.current.getState()?.submarine;
+                    if (subState) {
+                      engineRef.current.addMapMarker({
+                        x: subState.x,
+                        y: subState.y,
+                        type: 'interest',
+                        label: `标记点 ${Math.floor(subState.depth)}m`,
+                        color: '#00ffcc',
+                      });
+                    }
+                  }
+                }}
+                className="w-12 h-12 rounded-lg bg-cyan-500/20 flex items-center justify-center mb-1 border border-cyan-500/50 hover:bg-cyan-500/30 active:scale-95 cursor-pointer transition-all"
+              >
                 <MapPin size={20} className="text-cyan-400" />
-              </div>
+              </button>
               <span className="text-xs text-slate-500">M 标记</span>
             </div>
 

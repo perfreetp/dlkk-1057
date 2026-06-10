@@ -42,6 +42,14 @@ export const useSaveStore = create<SaveStoreState & SaveStoreActions>((set, get)
   loadSave: () => {
     const saved = loadFromStorage<GameSave>(STORAGE_KEY);
     if (saved) {
+      if (!saved.unlockedLevels.includes('level1')) {
+        saved.unlockedLevels = ['level1', ...saved.unlockedLevels];
+        saveToStorage(STORAGE_KEY, saved);
+      }
+      saved.unlockedLevels = saved.unlockedLevels.filter(id => id !== 'level-1');
+      if (!saved.unlockedLevels.includes('level1')) {
+        saved.unlockedLevels.push('level1');
+      }
       set({ save: saved, isLoaded: true });
     } else {
       set({ save: null, isLoaded: true });
